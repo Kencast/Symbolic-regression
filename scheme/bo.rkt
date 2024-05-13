@@ -11,6 +11,6 @@
 
 (define ant(lambda (t) (begin (print t) (newline) (print (- (rando 0 40) 20)))))
 
+
+
 ;(print (expt -3 (/ 43 115)))
-(print (denominator 10)
-       )(newline)
