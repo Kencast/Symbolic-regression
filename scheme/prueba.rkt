@@ -51,17 +51,11 @@
     (cond ((= N 1) (car L))
           (else (getOperation (cdr L) (- N 1))))))
 
-; (define obtenerRama
-;   (lambda (I o)
-;     (cond((= 0 o) (cadr I))
-;          (#t(caddr I)))))
-
 (define obtenerRama
   (lambda (I o)
-    (cond ((not (list? I)) I)
-          ((= 0 (rando 0 1)) I)
-          ((= o 0) (obtenerRama (cadr I) o))
-          (else (obtenerRama (caddr I) o)))))
+    (cond((= 0 o) (cadr I))
+         (#t(caddr I)))))
+
 
 (define ponerRama
   (lambda (R I o)
