@@ -23,15 +23,15 @@
   (lambda (I J)
     (+ (random (+ (- J I) 1)) I)))
 
+
 (define operations '(+ - * div expo ln a b constant))
 (define constant (- (rando 0 40) 20))
 (define noOperations '(constant a b))
 (define archivo (open-input-file "scheme/prueba.txt"))
-(define prbMut 10)
+(define prbMut 12)
 (define cantGen 50)
-(define cantIndividuos 50)
-(define cantTorneo 4)
-
+(define cantIndividuos 60)
+(define cantTorneo 5)
 
 (define separarNumeros
   (lambda (S G)
@@ -53,29 +53,50 @@
 
 (define obtenerRama
   (lambda (I o)
-    (cond((= 0 o) (cadr I))
-         (#t(caddr I)))))
-
+    (cond ((not (list? I)) I)
+          ((= 1 (rando 0 3)) I)
+          ((= o 0) (obtenerRama (cadr I) o))
+          (else (obtenerRama (caddr I) o)))))
 
 (define ponerRama
-  (lambda (R I o)
-    (cond((= 0 o) (list (car I) R (caddr I)))
-         (#t(list (car I) (cadr I) R)))))
+  (lambda (R I o F)
+    (cond ((and (> F 0) (or (not (list? I)) (= (rando 0 1) 1))) R)
+          ((= 0 o) (list (car I) (ponerRama R (cadr I) o 1) (caddr I)))
+          (else (list (car I) (cadr I) (ponerRama R (caddr I) o 1))))))
 
 (define mutar
   (lambda (I)
     (list (getOperation operations (rando 1 6)) (cadr I) (caddr I))))
 
+(define mutar2
+  (lambda (I)
+    (cond ((not (list? I)) I)
+          ((= 1 (rando 1 8)) (list (getOperation operations (rando 1 6)) (mutar2 (cadr I)) (mutar2 (caddr I))))
+          (else (list (car I) (mutar2 (cadr I)) (mutar2 (caddr I)))))))
+
+(define obtenerHijo
+  (lambda (I o F)
+    (cond ((not(list? I)) (getOperation noOperations (rando 2 3)))
+          ((and (= o 0) (> F 0) (= 1 (rando 0 3))) (cadr I))
+          ((and (= o 1) (> F 0) (= 1 (rando 0 3))) (caddr I))
+          ((= 0 o) (obtenerHijo (cadr I) o 1))
+          (#t(obtenerHijo (caddr I) o 1)))))
+
+(define mutElimi
+  (lambda (I o F)
+    (cond ((and (> F 0) (or (not(list? I)) (= 1 (rando 0 3)))) (obtenerHijo I (rando 0 1) 0))
+          ((= o 0) (list (car I) (mutElimi (cadr I) o 1) (caddr I)))
+          (#t(list (car I) (cadr I) (mutElimi (caddr I) o 1))))))
+
 (define mutacion
   (lambda (I res)
-    (cond ((<= res prbMut) (mutar I))
+    (cond ((<= res (/ prbMut 2)) (mutar2 I))
+          ((< res prbMut) (mutElimi I (rando 0 1) 0))
           (else I))))
-
-
 
 (define cruzar
   (lambda (Pad1 Pad2)
-    (fitness (mutacion (ponerRama (obtenerRama Pad2 (rando 0 1)) Pad1 (rando 0 1)) (rando 1 100)))))
+    (fitness (mutacion (ponerRama (obtenerRama Pad2 (rando 0 1)) Pad1 (rando 0 1) 0) (rando 1 100)))))
 
 (define elitismo
   (lambda(Ind M)
@@ -95,7 +116,7 @@
 
 (define nuevaGeneracion
   (lambda (I n)
-    (cond((= n (- cantIndividuos 0)) '())
+    (cond((= n (- cantIndividuos 1)) '())
          (#t (cons (cruzar (car(laEleccion I cantTorneo)) (car(laEleccion I cantTorneo))) (nuevaGeneracion I (+ n 1)))))))
 
 (define elegir
@@ -106,8 +127,8 @@
          ((< n 57) 4)
          ((< n 62) 5)
          ((< n 67) 6)
-         ((< n 79) 7)
-         ((< n 91) 8)
+         ((< n 80) 7)
+         ((< n 93) 8)
          (#t 9))))
 
 (define generarIndividuo
@@ -154,7 +175,8 @@
 (define preEvaluar
   (lambda (z N)
     (cond((equal? N 'oo) +inf.0)
-         (#t (* (- z N) (- z N))))))
+         (#t (* (- z N) (- z N)))
+         )))
 
 (define fitnessKener
   (lambda (I P)
@@ -172,26 +194,25 @@
     (cond((null? I)'())
          (#t (cons (fitness (car I)) (primFitness (cdr I)))))))
 
+(define imprimir
+  (lambda (L outP)
+    (begin (write L outP) (close-output-port outP))))
 
 (define evolucion
   (lambda (Ind Elit cont)
-    (cond ((= cont cantGen) (elitismo Ind Elit))
-          ((= 0 (cadr Elit)) (Elit))
-          (#t (begin (print Elit) (newline) (evolucion (nuevaGeneracion Ind 0) (elitismo Ind Elit) (+ 1 cont))))
+    (cond ((= cont cantGen) (imprimir (elitismo Ind Elit) (open-output-file "scheme/salida.txt" #:exists 'truncate)))
+          ((= 0 (cadr Elit)) (imprimir Elit (open-output-file "scheme/salida.txt" #:exists 'truncate)))
+          (#t (begin (print Elit) (newline) (evolucion (cons (fitness (mutacion (car Elit) (rando 1 100))) (nuevaGeneracion Ind 0)) (elitismo Ind Elit) (+ 1 cont))))
           )))
 
 (define gen (primFitness(genCero cantIndividuos)))
 (define iniciar (lambda () (evolucion gen (elitismo gen (car gen)) 0)))
 
-;(define prueba (car(genCero 1)))
 
-(define analizar
-  (lambda(Ind)
-    (cond
-      ((null? Ind) '())
-      (else (cons (cadar Ind) (analizar (cdr Ind)))))
-    ))
 
-(print (iniciar))
+;(print (ponerRama ramo ind (rando 0 1) 0))
+(iniciar)
+
+
 
 ;/home/kencast/cpp/Symbolic-regression/scheme/prueba.txt

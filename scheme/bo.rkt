@@ -1,15 +1,12 @@
 #lang swindle
 
-(define rando
-  (lambda (I J)
-    (+ (random (+ (- J I) 1)) I)))
 
-(define constant (- (rando 0 40) 20))
+(define imprimir
+  (lambda (L outP)
+    (begin (write L outP) (close-output-port outP))))
 
+(imprimir '((2 1) 3 4) (open-output-file "scheme/salida.txt" #:exists 'truncate))
 
-(define po(lambda (n) (print (+ n (- (rando 0 40) 20)))))
-
-(define ant(lambda (t) (begin (print t) (newline) (print (- (rando 0 40) 20)))))
 
 
 
