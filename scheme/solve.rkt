@@ -1,5 +1,8 @@
-#lang swindle
-
+#lang racket
+(require plot)
+(require racket/gui)
+(define frame (new frame% [label "Symbolic Regresion"] [width 650] [height 650]))
+(define canva (new canvas% [parent frame]))
 (define ln
   (lambda (a b)
     (cond
@@ -16,7 +19,7 @@
     (cond((and (= 0 a) (<= b 0)) 'oo)
          ((and (< a 0) (even? (denominator b))) 'oo)
          ((= a 0) 0)
-         ((> (abs (* (log (abs a)) b)) 80) 'oo)
+         ((> (abs (* (log (abs a)) b)) 70) 'oo)
          (#t (real-part (expt a b))))))
 
 (define mult
@@ -35,12 +38,12 @@
 (define operations '(+ - * div expo ln a b constant))
 (define constant (- (rando 0 40) 20))
 (define noOperations '(constant a b))
-(define archivo (open-input-file "scheme/prueba1.txt"))
+(define archivo (open-input-file "scheme/prueba.txt"))
 (define prbMut 15)
-(define cantGen 1000)
-(define cantIndividuos 100)
-(define cantTorneo 6)
-
+(define cantGen 100)
+(define cantIndividuos 300)
+(define cantTorneo 15)
+(send frame show #t)
 (define separarNumeros
   (lambda (S G)
     (cond((equal? ")" S) (list (string->number G)))
@@ -54,6 +57,7 @@
 
 (define Puntos (leer (read-line archivo)))
 (close-input-port archivo)
+(define Vuntos (map list->vector Puntos))
 (define getOperation
   (lambda (L N)
     (cond ((= N 1) (car L))
@@ -75,11 +79,14 @@
           ((= o 0) (obtenerRama (cadr I) o))
           (else (obtenerRama (caddr I) o)))))
 
+
 (define ponerRama
   (lambda (R I o F)
     (cond ((and (> F 0) (or (not (list? I)) (= (rando 0 2) 1))) R)
           ((= 0 o) (list (car I) (ponerRama R (cadr I) o 1) (caddr I)))
           (else (list (car I) (cadr I) (ponerRama R (caddr I) o 1))))))
+
+
 
 (define nuevaRama
   (lambda (n)
@@ -87,7 +94,7 @@
 
 (define mutAgrande
   (lambda (I)
-    (ponerRama (nuevaRama 3) I (rando 0 1) 0)))
+    (ponerRama (nuevaRama 4) I (rando 0 1) 0)))
 
 (define mutar
   (lambda (I)
@@ -96,7 +103,7 @@
 (define mutar2
   (lambda (I)
     (cond ((not (list? I)) I)
-          ((= 1 (rando 1 6)) (list (getOperation operations (rando 1 6)) (mutar2 (cadr I)) (mutar2 (caddr I))))
+          ((= 1 (rando 1 7)) (list (getOperation operations (rando 1 6)) (mutar2 (cadr I)) (mutar2 (caddr I))))
           (else (list (car I) (mutar2 (cadr I)) (mutar2 (caddr I)))))))
 
 (define obtenerHijo
@@ -143,7 +150,7 @@
 (define posiblesPadres
   (lambda (I n)
     (cond((= n 0) '())
-         (#t(cons (getOperation I (rando 1 cantIndividuos)) (posiblesPadres I (- n 1)))))))
+         (#t (cons (getOperation I (rando 1 cantIndividuos)) (posiblesPadres I (- n 1)))))))
 
 (define laEleccion
   (lambda (I n)
@@ -154,23 +161,23 @@
     (cond((= n (- cantIndividuos 1)) '())
          (#t (cons (cruzar (car(laEleccion I cantTorneo)) (car(laEleccion I cantTorneo))) (nuevaGeneracion I (+ n 1)))))))
 
-; (define elegir
-;   (lambda (n)
-;     (cond((< n 15) 1)
-;          ((< n 30) 2)
-;          ((< n 45) 3)
-;          ((< n 57) 4)
-;          ((< n 62) 5)
-;          ((< n 67) 6)
-;          ((< n 80) 7)
-;          ((< n 93) 8)
-;          (#t 9))))
-
 (define elegir
   (lambda (n)
-    (cond ((< n 67) (rando 1 6))
-          (else (rando 1 9))
-          )))
+    (cond((< n 15) 1)
+         ((< n 30) 2)
+         ((< n 45) 3)
+         ((< n 57) 4)
+         ((< n 62) 5)
+         ((< n 67) 6)
+         ((< n 80) 7)
+         ((< n 93) 8)
+         (#t 9))))
+
+; (define elegir
+;   (lambda (n)
+;     (cond ((< n 67) (rando 1 6))
+;           (else (rando 1 9))
+;           )))
 
 (define genCero
   (lambda (n)
@@ -217,6 +224,9 @@
       ((not (list? A)) A)
       (else (revisarCalculo (car A) (evaluar (cadr A) x y) (evaluar (caddr A) x y))))))
 
+
+
+
 (define preEvaluar
   (lambda (z N)
     (cond((equal? N 'oo) +inf.0)
@@ -262,15 +272,32 @@
     (cond ((null? LA) (newline))
           (else (begin (newline) (print (list (cadar LA) (cantNodos (caar LA)))) (analisis (cdr LA)))))))
 
+(define graficar
+  (λ (I s a)
+    (plot3d/dc (list (points3d Vuntos #:color 'red #:sym 'fullcircle1)
+                     (surface3d (λ (a b) (evaluar I a b)) #:color 2))
+               (send canva get-dc)
+               0 0
+               (- (send frame get-width) 50)
+               (- (send frame get-height) 50)
+               #:title s
+               #:x-label "EJE X"
+               #:y-label "EJE Y"
+               #:z-label "EJE Z"
+               #:altitude 10
+               #:angle a
+               )))
+
+
 (define evolucion
-  (lambda (Ind Elit cont)
-    (cond ;((= cont cantGen) (imprimir (fitnessPrime (car (elitismo Ind Elit))) (open-output-file "scheme/salida.txt" #:exists 'truncate)))
-      ((= cont cantGen) (begin (print (fitnessPrime (car (elitismo Ind Elit)))) (newline)(analisis Ind)))
-      ((= 0 (cadr Elit)) (imprimir (fitnessPrime (car Elit)) (open-output-file "scheme/salida.txt" #:exists 'truncate)))
-      (#t (begin (print (cadr Elit)) (newline) (evolucion (cons (fitness (mutacion (car Elit) (rando 1 100))) (nuevaGeneracion Ind 0)) (elitismo Ind Elit) (+ 1 cont))))          )))
+  (lambda (Ind Elit cont a)
+    (cond ((= cont cantGen) (begin (graficar (car Elit) (string-append "Distancia: " (real->decimal-string (cadr (fitnessPrime (car Elit))))) a) (imprimir (fitnessPrime (car (elitismo Ind Elit))) (open-output-file "scheme/salida.txt" #:exists 'truncate))))
+          ;((= cont cantGen) (begin (print (fitnessPrime (car (elitismo Ind Elit)))) (newline)(analisis Ind)))
+          ((= 0 (cadr Elit)) (begin (graficar (car Elit) (string-append "Distancia: " (number->string (cadr Elit))) a) (imprimir (fitnessPrime (car Elit)) (open-output-file "scheme/salida.txt" #:exists 'truncate))))
+          (#t (begin (graficar (car Elit) (string-append "Gen: " (number->string cont)) a) (sleep/yield 2) (evolucion (cons (fitness (mutacion (car Elit) (rando 0 100))) (nuevaGeneracion Ind 0)) (elitismo Ind Elit) (+ 1 cont) (remainder (+ 45 a) 360)))))))
 
 (define gen (primFitness(genCero cantIndividuos)))
-(define iniciar (lambda () (evolucion gen (elitismo gen (car gen)) 0)))
+(define iniciar (lambda () (evolucion gen (elitismo gen (car gen)) 0 0)))
 
 (define ind (car (genCero 1)))
 
