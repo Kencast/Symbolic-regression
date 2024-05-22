@@ -1,32 +1,36 @@
 #lang racket
 (require plot)
 (require racket/gui)
+(require racket/future)
+
 (define frame (new frame% [label "Symbolic Regresion"] [width 650] [height 650]))
 (define canva (new canvas% [parent frame]))
+
 (define ln
   (lambda (a b)
     (cond
       ((or (= a 1) (<= a 0) (<= b 0)) 'oo)
-      (else (/ (log b) (log a))))))
+      (else (exact->inexact (/ (log b) (log a)))))))
 
 (define div
   (lambda (a b)
     (cond ((= b 0) 'oo)
-          (else (/ a b)))))
+          (else (exact->inexact (/ a b)))
+          )))
 
 (define expo
   (lambda (a b)
     (cond((and (= 0 a) (<= b 0)) 'oo)
          ((and (< a 0) (even? (denominator b))) 'oo)
          ((= a 0) 0)
-         ((> (abs (* (log (abs a)) b)) 70) 'oo)
+         ((> (abs (* (log (abs a)) b)) 50) 'oo)
          (#t (real-part (expt a b))))))
 
 (define mult
   (lambda (I D)
     (cond
       ((or (= I 0) (= D 0)) 0)
-      ((> (+ (abs (log (abs I))) (abs (log (abs D)))) 100) 'oo)
+      ((> (+ (abs (log (abs I))) (abs (log (abs D)))) 60) 'oo)
       (else (* I D))
       )))
 
@@ -34,16 +38,17 @@
   (lambda (I J)
     (+ (random (+ (- J I) 1)) I)))
 
-
 (define operations '(+ - * div expo ln a b constant))
 (define constant (- (rando 0 40) 20))
 (define noOperations '(constant a b))
 (define archivo (open-input-file "scheme/f2.txt"))
-(define prbMut 30)
-(define cantGen 500)
-(define cantIndividuos 201)
+(define prbMut 50)
+(define cantGen 600)
+(define cantIndividuos 101)
 (define mitadIndividos (quotient cantIndividuos 2))
 (define cantTorneo 5)
+(define cantMigrar 10)
+(define mitadMigrar (/ cantMigrar 2))
 (define cantFumigar 10)
 ;(send frame show #t)
 
@@ -75,6 +80,7 @@
       (#t(list P (generarIndividuo (getOperation operations (elegir(rando 0 100))) (+ 1 h) n) (generarIndividuo (getOperation operations (elegir(rando 0 100))) (+ 1 h) n))))))
 
 
+
 (define obtenerRama
   (lambda (I o)
     (cond ((not (list? I)) I)
@@ -89,14 +95,15 @@
           ((= 0 o) (list (car I) (ponerRama R (cadr I) o 1) (caddr I)))
           (else (list (car I) (cadr I) (ponerRama R (caddr I) o 1))))))
 
-
 (define nuevaRama
   (lambda (n)
     (generarIndividuo (getOperation operations (elegir (rando 0 66))) 0 n)))
 
 (define mutAgrande
-  (lambda (I)
-    (ponerRama (nuevaRama 4) I (rando 0 1) 0)))
+  (lambda (I F)
+    (cond ((or (not (list? I)) (= 0 (rando 0 1))) I)
+          ((and (> F 0) (= (rando 0 2) 1)) (nuevaRama 6))
+          (else (list (car I) (mutAgrande (cadr I) 1) (mutAgrande (caddr I) 1))))))
 
 (define mutar
   (lambda (I)
@@ -119,8 +126,6 @@
 (define mutElimi
   (lambda (I F)
     (cond ((and (> F 0) (or (not(list? I)) (= 1 (rando 0 1)))) (obtenerHijo I (rando 0 1) 0))
-          ;((= o 0) (list (car I) (mutElimi (cadr I) o 1) (caddr I)))
-          ;(#t(list (car I) (cadr I) (mutElimi (caddr I) o 1))))))
           (#t (list (car I) (mutElimi (cadr I) 1) (mutElimi (caddr I) 1))))))
 
 (define cantNodos
@@ -131,11 +136,9 @@
 
 (define mutacion
   (lambda (I res)
-    (cond ((<= res (/ prbMut 3)) (mutar2 I))
-          ((<= res (* (/ prbMut 3)) 2)(mutar I))
-          ((< res prbMut) (mutAgrande I))
-          ;((< res (+ prbMut 40)) (mutElimi I 0))
-          ((> (cantNodos I) 300) (mutElimi I 0))
+    (cond ((<= res (/ prbMut 2)) (mutar2 I))
+          ((< res prbMut) (mutAgrande I 0))
+          ((> (cantNodos I) 200) (mutElimi I 0))
           (else I))))
 
 (define cruzar
@@ -184,7 +187,7 @@
 (define genCero
   (lambda (n)
     (cond ((= n 0) '())
-          (#t(cons (generarIndividuo (getOperation operations (elegir (rando 0 66))) 0 8) (genCero (- n 1)))))))
+          (#t(cons (generarIndividuo (getOperation operations (elegir (rando 0 66))) 0 5) (genCero (- n 1)))))))
 
 (define hojas
   (lambda (A)
@@ -203,7 +206,7 @@
   (lambda (O I D)
     (cond ((equal? O '+) (+ I D))
           ((equal? O '-) (- I D))
-          ((equal? O '*) (* I D))
+          ((equal? O '*) (mult I D))
           ((equal? O 'div) (div I D))
           ((equal? O 'expo) (expo I D))
           ((equal? O 'ln) (ln I D))
@@ -214,7 +217,6 @@
     (cond((or (equal? 'oo I) (equal? 'oo D)) 'oo)
          ((or (not (real? I)) (not (real? D))) 'oo)
          ((or (= (abs I) +inf.0) (= (abs D) +inf.0)) 'oo)
-         ;(#t (eval (list O I D)))
          (#t (eval2 O I D))
          )))
 
@@ -314,21 +316,59 @@
 ;           ((= 0 (cadr Elit)) (begin (graficar (car Elit) (string-append "Distancia: " (number->string (cadr Elit))) a) (imprimir (fitnessPrime (car Elit)) (open-output-file "scheme/salida.txt" #:exists 'truncate))))
 ;           (#t (begin (graficar (car Elit) (string-append "Gen: " (number->string cont)) a) (sleep/yield 2) (evolucion (cons (fitness (mutacion (car Elit) (rando 0 100))) (nuevaGeneracion Ind 0)) (elitismo Ind Elit) (+ 1 cont) (remainder (+ 45 a) 360)))))))
 
-(define evolucion
-  (lambda (Ind Elit cont a)
-    (cond ;((= cont cantGen) (begin (graficar (car Elit) (string-append "Distancia: " (real->decimal-string (cadr (fitnessPrime (car Elit))))) a) (imprimir (fitnessPrime (car (elitismo Ind Elit))) (open-output-file "scheme/salida.txt" #:exists 'truncate))))
-      ((= cont cantGen) (begin (displayln (fitnessPrime (car (elitismo Ind Elit)))) (analisis Ind (open-output-file "scheme/an.txt" #:exists 'truncate))))
-      ((= 0 (cadr Elit)) (begin (displayln 'Fin) (imprimir (fitnessPrime (car Elit)) (open-output-file "scheme/salida.txt" #:exists 'truncate))))
-      (#t (begin (displayln (cadr Elit)) (evolucion (cons (fitness (mutacion (car Elit) (rando 0 100))) (mutPob(nuevaGeneracion Ind 0))) (elitismo Ind Elit) (+ 1 cont) (remainder (+ 45 a) 360)))))))
+;(define evolucion
+; (lambda (Ind Elit cont a)
+;  (cond ;((= cont cantGen) (begin (graficar (car Elit) (string-append "Distancia: " (real->decimal-string (cadr (fitnessPrime (car Elit))))) a) (imprimir (fitnessPrime (car (elitismo Ind Elit))) (open-output-file "scheme/salida.txt" #:exists 'truncate))))
+;   ((= cont cantGen) (begin (displayln (fitnessPrime (car (elitismo Ind Elit)))) (analisis Ind (open-output-file "scheme/an.txt" #:exists 'truncate))))
+;  ((= 0 (cadr Elit)) (begin (displayln 'Fin) (imprimir (fitnessPrime (car Elit)) (open-output-file "scheme/salida.txt" #:exists 'truncate))))
+; (#t (begin (displayln (cadr Elit)) (evolucion (cons (fitness (mutacion (car Elit) (rando 0 100))) (mutPob(nuevaGeneracion Ind 0))) (elitismo Ind Elit) (+ 1 cont) (remainder (+ 45 a) 360)))))))
 
 
-(define gen (primFitness(genCero cantIndividuos)))
-(define iniciar (lambda () (evolucion gen (elitismo gen (car gen)) 0 0)))
+(define futuros
+  (lambda (P)
+    (map (lambda (x) (future (lambda () (nuevaGeneracion x 0)))) P)))
 
-;(define ind (primFitness(genCero 5)))
+(define nuevasGen
+  (lambda (n)
+    (map touch n)))
+
+(define elitismoMundial
+  (lambda (P e)
+    (elitismo (car P) (elitismo (cadr P) (elitismo (caddr P) e)))))
+
+(define meterElite
+  (lambda (e P)
+    (cond ((null? P) P)
+          (#t(cons (cons (fitness (mutacion (car e) (rando 0 100))) (car P)) (meterElite e (cdr P)))))))
+
+(define sacarInd
+  (lambda (P n F S)
+    (cond ((= n cantMigrar) (list F S P))
+          ((< n mitadMigrar) (sacarInd (cdr P) (+ n 1) (cons (car P) F) S))
+          (#t(sacarInd (cdr P) (+ n 1) F (cons (car P) S))))))
+
+(define procesoMigrar
+  (lambda (P1 P2 P3)
+    (list (append (cadr P2) (car P3) (caddr P1))
+          (append (cadr P3) (car P1) (caddr P2))
+          (append (cadr P1) (car P2) (caddr P3)))))
+
+(define migracion
+  (lambda (GP)
+    (procesoMigrar (sacarInd (car GP) 0 '() '()) (sacarInd (cadr GP) 0 '() '()) (sacarInd (cadr GP) 0 '() '()))))
+
+(define evolucionFuture
+  (lambda (P e g)
+    (displayln (cadr e))
+    (cond ((= g cantGen) (displayln (fitnessPrime (car (elitismoMundial P e)))))
+          ((= 0 (cadr e)) (displayln (fitnessPrime (car e))))
+          (#t(evolucionFuture (nuevasGen (futuros (meterElite e (migracion P)))) (elitismoMundial P e) (+ 1 g))))))
+
+(define pob1 (primFitness(genCero cantIndividuos)))
+(define pob2 (primFitness(genCero cantIndividuos)))
+(define pob3 (primFitness(genCero cantIndividuos)))
+(define iniciar (lambda () (evolucionFuture (list pob1 pob2 pob3) (car pob1) 0)))
 
 (iniciar)
-
-
 
 ;/home/kencast/cpp/Symbolic-regression/scheme/prueba.txt
