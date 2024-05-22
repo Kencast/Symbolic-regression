@@ -11,4 +11,4 @@
                [height 500]))
 (define c (new canvas% [parent f]))
 
-(print (real->decimal-string -5))
+(displayln 'hola )
