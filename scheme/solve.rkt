@@ -45,17 +45,17 @@
 (define operations '(+ - * div expo ln a b constant))
 (define constant (- (rando 0 40) 20))
 (define noOperations '(constant a b))
-(define archivo (open-input-file "scheme/f1.txt"))
-(define prbMut 30)
-(define cantGen 2000)
+(define archivo (open-input-file "scheme/f2.txt"))
+(define prbMut 20)
+(define cantGen 500)
 (define cantIndividuos 101)
 (define mitadIndividos (quotient cantIndividuos 2))
 (define cantTorneo 5)
 (define cantMigrar 10)
 (define mitadMigrar (/ cantMigrar 2))
 (define migrationTime 10)
-(define cantPob 4)
-;(send frame show #t)
+(define cantPob 3)
+(send frame show #t)
 
 (define separarNumeros
   (lambda (S G)
@@ -112,7 +112,7 @@
 (define mutar2
   (lambda (I)
     (cond ((not (list? I)) I)
-          ((= 1 (rando 0 7)) (list (getOperation operations (rando 1 6)) (mutar2 (cadr I)) (mutar2 (caddr I))))
+          ((= 1 (rando 0 5)) (list (getOperation operations (rando 1 6)) (mutar2 (cadr I)) (mutar2 (caddr I))))
           (else (list (car I) (mutar2 (cadr I)) (mutar2 (caddr I)))))))
 
 (define obtenerHijo
@@ -138,7 +138,7 @@
   (lambda (I res)
     (cond ((<= res (/ prbMut 2)) (mutar2 I))
           ((< res prbMut) (mutAgrande I 0))
-          ((> (cantNodos I) 150) (mutElimi I 0))
+          ((> (cantNodos I) 70) (mutElimi I 0))
           (else I))))
 
 (define cruzar
@@ -350,28 +350,31 @@
                     (analisis (list E) out))))
 
 (define exito
-  (lambda (E out)
+  (lambda (E out c)
     (begin
       (displayln E)
-      (write E out))
+      (displayln c)
+      (write E out)
+      (analisis (list E) out)
+      )
     ))
-
-(define evolucionFuture
-  (lambda (Pe g a)
-    (displayln (cadar Pe))
-    (cond ((= g cantGen) (end (fitnessPrime (car (elitismoMundial (cadr Pe) (car Pe)))) (open-output-file "scheme/an.txt" #:exists 'truncate)))
-          ((= 0 (cadar Pe)) (exito (fitnessPrime (caar Pe)) (open-output-file "scheme/salida.txt" #:exists 'truncate)))
-          (#t (evolucionFuture (nuevasGen (futuros (meterElite (car Pe) (migracion (cadr Pe) g))) Pe) (+ 1 g) a)))))
 
 ; (define evolucionFuture
 ;   (lambda (Pe g a)
 ;     (displayln (cadar Pe))
-;     (cond ((= g cantGen) (begin (graficar (caar Pe) (string-append "Distancia: " (real->decimal-string (cadr (fitnessPrime (caar Pe))))) a) (end (fitnessPrime (car (elitismoMundial (cadr Pe) (car Pe)))) (open-output-file "scheme/an.txt" #:exists 'truncate))))
-;           ((= 0 (cadar Pe)) (begin (graficar (caar Pe) (string-append "Distancia: " (number->string (cadar Pe))) a)
-;                                    (exito (fitnessPrime (caar Pe)) (open-output-file "scheme/salida.txt" #:exists 'truncate))))
-;           (#t (begin (graficar (caar Pe) (string-append "Gen: " (number->string g)) a)
-;                      (sleep/yield 1)
-;                      (evolucionFuture (nuevasGen (futuros (meterElite (car Pe) (migracion (cadr Pe) g))) Pe) (+ 1 g) (remainder (+ 45 a) 360)))))))
+;     (cond ((= g cantGen) (end (fitnessPrime (car (elitismoMundial (cadr Pe) (car Pe)))) (open-output-file "scheme/an.txt" #:exists 'truncate)))
+;           ((= 0 (cadar Pe)) (exito (fitnessPrime (caar Pe)) (open-output-file "scheme/salida.txt" #:exists 'truncate) g))
+;           (#t (evolucionFuture (nuevasGen (futuros (meterElite (car Pe) (migracion (cadr Pe) g))) Pe) (+ 1 g) a)))))
+
+(define evolucionFuture
+  (lambda (Pe g a)
+    (displayln (cadar Pe))
+    (cond ((= g cantGen) (begin (graficar (caar Pe) (string-append "Distancia: " (real->decimal-string (cadr (fitnessPrime (caar Pe))))) a) (end (fitnessPrime (car (elitismoMundial (cadr Pe) (car Pe)))) (open-output-file "scheme/an.txt" #:exists 'truncate))))
+          ((= 0 (cadar Pe)) (begin (graficar (caar Pe) (string-append "Distancia: " (number->string (cadar Pe))) a)
+                                   (exito (fitnessPrime (caar Pe)) (open-output-file "scheme/salida.txt" #:exists 'truncate) g)))
+          (#t (begin (graficar (caar Pe) (string-append "Gen: " (number->string g)) a)
+                     (sleep/yield .5)
+                     (evolucionFuture (nuevasGen (futuros (meterElite (car Pe) (migracion (cadr Pe) g))) Pe) (+ 1 g) (remainder (+ 45 a) 360)))))))
 
 (define pob
   (lambda (n)
