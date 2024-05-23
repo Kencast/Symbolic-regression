@@ -5,6 +5,7 @@
 
 (define frame (new frame% [label "Symbolic Regresion"] [width 650] [height 650]))
 (define canva (new canvas% [parent frame]))
+(define epsilon 0.0000001)
 
 (define ln
   (lambda (a b)
@@ -15,6 +16,8 @@
 (define div
   (lambda (a b)
     (cond ((= b 0) 'oo)
+          ((<= (abs (- 1 b)) epsilon) (cond ((and (positive? a) (positive? b)) a) (else (- a))))
+          ((<= (abs a) epsilon) 0)
           (else (exact->inexact (/ a b)))
           )))
 
@@ -23,14 +26,15 @@
     (cond((and (= 0 a) (<= b 0)) 'oo)
          ((and (< a 0) (even? (denominator b))) 'oo)
          ((= a 0) 0)
-         ((> (abs (* (log (abs a)) b)) 50) 'oo)
-         (#t (real-part (expt a b))))))
+         ((> (abs (* (log (abs a)) b)) 70) 'oo)
+         (#t (exact->inexact (real-part (expt a b))))
+         )))
 
 (define mult
   (lambda (I D)
     (cond
       ((or (= I 0) (= D 0)) 0)
-      ((> (+ (abs (log (abs I))) (abs (log (abs D)))) 60) 'oo)
+      ((> (+ (abs (log (abs I))) (abs (log (abs D)))) 80) 'oo)
       (else (* I D))
       )))
 
@@ -41,15 +45,16 @@
 (define operations '(+ - * div expo ln a b constant))
 (define constant (- (rando 0 40) 20))
 (define noOperations '(constant a b))
-(define archivo (open-input-file "scheme/f2.txt"))
-(define prbMut 50)
-(define cantGen 600)
+(define archivo (open-input-file "scheme/f1.txt"))
+(define prbMut 30)
+(define cantGen 2000)
 (define cantIndividuos 101)
 (define mitadIndividos (quotient cantIndividuos 2))
 (define cantTorneo 5)
 (define cantMigrar 10)
 (define mitadMigrar (/ cantMigrar 2))
-(define cantFumigar 10)
+(define migrationTime 10)
+(define cantPob 4)
 ;(send frame show #t)
 
 (define separarNumeros
@@ -80,7 +85,6 @@
       (#t(list P (generarIndividuo (getOperation operations (elegir(rando 0 100))) (+ 1 h) n) (generarIndividuo (getOperation operations (elegir(rando 0 100))) (+ 1 h) n))))))
 
 
-
 (define obtenerRama
   (lambda (I o)
     (cond ((not (list? I)) I)
@@ -105,14 +109,10 @@
           ((and (> F 0) (= (rando 0 2) 1)) (nuevaRama 6))
           (else (list (car I) (mutAgrande (cadr I) 1) (mutAgrande (caddr I) 1))))))
 
-(define mutar
-  (lambda (I)
-    (list (getOperation operations (rando 1 6)) (cadr I) (caddr I))))
-
 (define mutar2
   (lambda (I)
     (cond ((not (list? I)) I)
-          ((= 1 (rando 0 4)) (list (getOperation operations (rando 1 6)) (mutar2 (cadr I)) (mutar2 (caddr I))))
+          ((= 1 (rando 0 7)) (list (getOperation operations (rando 1 6)) (mutar2 (cadr I)) (mutar2 (caddr I))))
           (else (list (car I) (mutar2 (cadr I)) (mutar2 (caddr I)))))))
 
 (define obtenerHijo
@@ -138,7 +138,7 @@
   (lambda (I res)
     (cond ((<= res (/ prbMut 2)) (mutar2 I))
           ((< res prbMut) (mutAgrande I 0))
-          ((> (cantNodos I) 200) (mutElimi I 0))
+          ((> (cantNodos I) 150) (mutElimi I 0))
           (else I))))
 
 (define cruzar
@@ -253,17 +253,6 @@
     (cond((not (revisar (hojas I) 0 0)) (list I +inf.0))
          (#t (list I (fitnessKener I Puntos))))))
 
-(define camaraGas
-  (lambda (I n)
-    (cond((= n cantFumigar) I)
-         ((= +inf.0 (cadar I)) (cons (fitness (generarIndividuo (getOperation operations (elegir (rando 0 66))) 0 8)) (camaraGas (cdr I) (+ n 1))))
-         (#t(cons (car I) (camaraGas (cdr I) (+ n 1)))))))
-
-(define mutPob
-  (lambda (I)
-    (cond ;((= 0 (rando 0 1)) (camaraGas I 0))
-      (#t I))))
-
 (define primFitness
   (lambda (I)
     (cond((null? I)'())
@@ -309,32 +298,18 @@
                )))
 
 
-; (define evolucion
-;   (lambda (Ind Elit cont a)
-;     (cond ((= cont cantGen) (begin (graficar (car Elit) (string-append "Distancia: " (real->decimal-string (cadr (fitnessPrime (car Elit))))) a) (imprimir (fitnessPrime (car (elitismo Ind Elit))) (open-output-file "scheme/salida.txt" #:exists 'truncate))))
-;           ;((= cont cantGen) (begin (print (fitnessPrime (car (elitismo Ind Elit)))) (newline)(analisis Ind)))
-;           ((= 0 (cadr Elit)) (begin (graficar (car Elit) (string-append "Distancia: " (number->string (cadr Elit))) a) (imprimir (fitnessPrime (car Elit)) (open-output-file "scheme/salida.txt" #:exists 'truncate))))
-;           (#t (begin (graficar (car Elit) (string-append "Gen: " (number->string cont)) a) (sleep/yield 2) (evolucion (cons (fitness (mutacion (car Elit) (rando 0 100))) (nuevaGeneracion Ind 0)) (elitismo Ind Elit) (+ 1 cont) (remainder (+ 45 a) 360)))))))
-
-;(define evolucion
-; (lambda (Ind Elit cont a)
-;  (cond ;((= cont cantGen) (begin (graficar (car Elit) (string-append "Distancia: " (real->decimal-string (cadr (fitnessPrime (car Elit))))) a) (imprimir (fitnessPrime (car (elitismo Ind Elit))) (open-output-file "scheme/salida.txt" #:exists 'truncate))))
-;   ((= cont cantGen) (begin (displayln (fitnessPrime (car (elitismo Ind Elit)))) (analisis Ind (open-output-file "scheme/an.txt" #:exists 'truncate))))
-;  ((= 0 (cadr Elit)) (begin (displayln 'Fin) (imprimir (fitnessPrime (car Elit)) (open-output-file "scheme/salida.txt" #:exists 'truncate))))
-; (#t (begin (displayln (cadr Elit)) (evolucion (cons (fitness (mutacion (car Elit) (rando 0 100))) (mutPob(nuevaGeneracion Ind 0))) (elitismo Ind Elit) (+ 1 cont) (remainder (+ 45 a) 360)))))))
-
-
 (define futuros
   (lambda (P)
     (map (lambda (x) (future (lambda () (nuevaGeneracion x 0)))) P)))
 
-(define nuevasGen
-  (lambda (n)
-    (map touch n)))
-
 (define elitismoMundial
   (lambda (P e)
-    (elitismo (car P) (elitismo (cadr P) (elitismo (caddr P) e)))))
+    (cond ((null? P) e)
+          (#t (elitismo (car P) (elitismoMundial (cdr P) e))))))
+
+(define nuevasGen
+  (lambda (F Pe)
+    (list (elitismoMundial (cadr Pe) (car Pe)) (map touch F))))
 
 (define meterElite
   (lambda (e P)
@@ -347,27 +322,65 @@
           ((< n mitadMigrar) (sacarInd (cdr P) (+ n 1) (cons (car P) F) S))
           (#t(sacarInd (cdr P) (+ n 1) F (cons (car P) S))))))
 
+
 (define procesoMigrar
   (lambda (P1 P2 P3)
     (list (append (cadr P2) (car P3) (caddr P1))
           (append (cadr P3) (car P1) (caddr P2))
           (append (cadr P1) (car P2) (caddr P3)))))
 
-(define migracion
+(define coyotes
   (lambda (GP)
-    (procesoMigrar (sacarInd (car GP) 0 '() '()) (sacarInd (cadr GP) 0 '() '()) (sacarInd (cadr GP) 0 '() '()))))
+    (append (procesoMigrar (sacarInd (car GP) 0 '() '()) (sacarInd (cadr GP) 0 '() '()) (sacarInd (caddr GP) 0 '() '()))  (cdddr GP))))
+
+(define shift
+  (lambda (L)
+    (cond
+      ((null? (cdr L)) '())
+      (else (cons (car L) (shift (cdr L)))))))
+
+(define migracion
+  (lambda (GP g)
+    (cond ((not (= 0 (remainder g migrationTime))) GP)
+          (#t (coyotes (cons (car (drop GP (- cantPob 1))) (shift GP)))))))
+
+(define end
+  (lambda (E out) (begin
+                    (displayln E)
+                    (analisis (list E) out))))
+
+(define exito
+  (lambda (E out)
+    (begin
+      (displayln E)
+      (write E out))
+    ))
 
 (define evolucionFuture
-  (lambda (P e g)
-    (displayln (cadr e))
-    (cond ((= g cantGen) (displayln (fitnessPrime (car (elitismoMundial P e)))))
-          ((= 0 (cadr e)) (displayln (fitnessPrime (car e))))
-          (#t(evolucionFuture (nuevasGen (futuros (meterElite e (migracion P)))) (elitismoMundial P e) (+ 1 g))))))
+  (lambda (Pe g a)
+    (displayln (cadar Pe))
+    (cond ((= g cantGen) (end (fitnessPrime (car (elitismoMundial (cadr Pe) (car Pe)))) (open-output-file "scheme/an.txt" #:exists 'truncate)))
+          ((= 0 (cadar Pe)) (exito (fitnessPrime (caar Pe)) (open-output-file "scheme/salida.txt" #:exists 'truncate)))
+          (#t (evolucionFuture (nuevasGen (futuros (meterElite (car Pe) (migracion (cadr Pe) g))) Pe) (+ 1 g) a)))))
 
-(define pob1 (primFitness(genCero cantIndividuos)))
-(define pob2 (primFitness(genCero cantIndividuos)))
-(define pob3 (primFitness(genCero cantIndividuos)))
-(define iniciar (lambda () (evolucionFuture (list pob1 pob2 pob3) (car pob1) 0)))
+; (define evolucionFuture
+;   (lambda (Pe g a)
+;     (displayln (cadar Pe))
+;     (cond ((= g cantGen) (begin (graficar (caar Pe) (string-append "Distancia: " (real->decimal-string (cadr (fitnessPrime (caar Pe))))) a) (end (fitnessPrime (car (elitismoMundial (cadr Pe) (car Pe)))) (open-output-file "scheme/an.txt" #:exists 'truncate))))
+;           ((= 0 (cadar Pe)) (begin (graficar (caar Pe) (string-append "Distancia: " (number->string (cadar Pe))) a)
+;                                    (exito (fitnessPrime (caar Pe)) (open-output-file "scheme/salida.txt" #:exists 'truncate))))
+;           (#t (begin (graficar (caar Pe) (string-append "Gen: " (number->string g)) a)
+;                      (sleep/yield 1)
+;                      (evolucionFuture (nuevasGen (futuros (meterElite (car Pe) (migracion (cadr Pe) g))) Pe) (+ 1 g) (remainder (+ 45 a) 360)))))))
+
+(define pob
+  (lambda (n)
+    (cond ((= n 0) '())
+          (#t(cons (primFitness(genCero cantIndividuos)) (pob (- n 1)))))))
+
+(define pobIni (pob cantPob))
+
+(define iniciar (lambda () (evolucionFuture (list (caar pobIni) pobIni) 0 0)))
 
 (iniciar)
 
