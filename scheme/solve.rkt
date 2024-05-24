@@ -47,15 +47,15 @@
 (define noOperations '(constant a b))
 (define archivo (open-input-file "scheme/f2.txt"))
 (define prbMut 20)
-(define cantGen 500)
+(define cantGen 20000)
 (define cantIndividuos 101)
 (define mitadIndividos (quotient cantIndividuos 2))
 (define cantTorneo 5)
 (define cantMigrar 10)
 (define mitadMigrar (/ cantMigrar 2))
 (define migrationTime 10)
-(define cantPob 3)
-(send frame show #t)
+(define cantPob 4)
+;(send frame show #t)
 
 (define separarNumeros
   (lambda (S G)
@@ -359,22 +359,22 @@
       )
     ))
 
-; (define evolucionFuture
-;   (lambda (Pe g a)
-;     (displayln (cadar Pe))
-;     (cond ((= g cantGen) (end (fitnessPrime (car (elitismoMundial (cadr Pe) (car Pe)))) (open-output-file "scheme/an.txt" #:exists 'truncate)))
-;           ((= 0 (cadar Pe)) (exito (fitnessPrime (caar Pe)) (open-output-file "scheme/salida.txt" #:exists 'truncate) g))
-;           (#t (evolucionFuture (nuevasGen (futuros (meterElite (car Pe) (migracion (cadr Pe) g))) Pe) (+ 1 g) a)))))
-
 (define evolucionFuture
   (lambda (Pe g a)
     (displayln (cadar Pe))
-    (cond ((= g cantGen) (begin (graficar (caar Pe) (string-append "Distancia: " (real->decimal-string (cadr (fitnessPrime (caar Pe))))) a) (end (fitnessPrime (car (elitismoMundial (cadr Pe) (car Pe)))) (open-output-file "scheme/an.txt" #:exists 'truncate))))
-          ((= 0 (cadar Pe)) (begin (graficar (caar Pe) (string-append "Distancia: " (number->string (cadar Pe))) a)
-                                   (exito (fitnessPrime (caar Pe)) (open-output-file "scheme/salida.txt" #:exists 'truncate) g)))
-          (#t (begin (graficar (caar Pe) (string-append "Gen: " (number->string g)) a)
-                     (sleep/yield .5)
-                     (evolucionFuture (nuevasGen (futuros (meterElite (car Pe) (migracion (cadr Pe) g))) Pe) (+ 1 g) (remainder (+ 45 a) 360)))))))
+    (cond ((= g cantGen) (end (fitnessPrime (car (elitismoMundial (cadr Pe) (car Pe)))) (open-output-file "scheme/an.txt" #:exists 'truncate)))
+          ((= 0 (cadar Pe)) (exito (fitnessPrime (caar Pe)) (open-output-file "scheme/salida.txt" #:exists 'truncate) g))
+          (#t (evolucionFuture (nuevasGen (futuros (meterElite (car Pe) (migracion (cadr Pe) g))) Pe) (+ 1 g) a)))))
+
+; (define evolucionFuture
+;   (lambda (Pe g a)
+;     (displayln (cadar Pe))
+;     (cond ((= g cantGen) (begin (graficar (caar Pe) (string-append "Distancia: " (real->decimal-string (cadr (fitnessPrime (caar Pe))))) a) (end (fitnessPrime (car (elitismoMundial (cadr Pe) (car Pe)))) (open-output-file "scheme/an.txt" #:exists 'truncate))))
+;           ((= 0 (cadar Pe)) (begin (graficar (caar Pe) (string-append "Distancia: " (number->string (cadar Pe))) a)
+;                                    (exito (fitnessPrime (caar Pe)) (open-output-file "scheme/salida.txt" #:exists 'truncate) g)))
+;           (#t (begin (graficar (caar Pe) (string-append "Gen: " (number->string g)) a)
+;                      (sleep/yield .5)
+;                      (evolucionFuture (nuevasGen (futuros (meterElite (car Pe) (migracion (cadr Pe) g))) Pe) (+ 1 g) (remainder (+ 45 a) 360)))))))
 
 (define pob
   (lambda (n)
